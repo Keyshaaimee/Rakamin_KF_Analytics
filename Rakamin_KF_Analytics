@@ -1,28 +1,22 @@
--- Membuat tabel analisis berdasarkan data transaksi
-CREATE OR REPLACE TABLE `avid-streamer-454913-s1.kimia_farma.kf_analysis` AS
-SELECT 
-    t.transaction_id,
-    t.date,
+-- Membuat tabel analisis dengan nama kf_analysis
+CREATE TABLE `avid-streamer-454913-s1.kimia_farma.kf_analysis` AS
+WITH
+    main AS(
+    SELECT 
+    transaction_id,
+    date,
     t.branch_id,
-    c.branch_name,
-    c.kota,
-    c.provinsi,
-
+    branch_name,
+    kota,
+    provinsi,
     -- Menggunakan rating sebagai rating_cabang
-    COALESCE(c.rating, 0) AS rating_cabang,
-
-    t.customer_name,
+    c.rating rating_cabang,
+    customer_name,
     t.product_id,
-    p.product_name,
-
+    product_name,
     -- Menggunakan price (karena actual_price tidak ada)
-    t.price AS actual_price,
-
-    t.discount_percentage,
-
-    -- Menghitung Nett Sales (harga setelah diskon)
-    ROUND(t.price * (1 - t.discount_percentage / 100), 2) AS nett_sales,
-
+    p.price actual_price,
+    discount_percentage,
     -- Menentukan Persentase Gross Laba berdasarkan price
     CASE 
         WHEN t.price <= 50000 THEN 0.10
@@ -30,25 +24,31 @@ SELECT
         WHEN t.price > 100000 AND t.price <= 300000 THEN 0.20
         WHEN t.price > 300000 AND t.price <= 500000 THEN 0.25
         ELSE 0.30
-    END AS persentase_gross_laba,
-
+    END 
+        AS persentase_gross_laba,
+    -- Menghitung Nett Sales (harga setelah diskon)
+        p.price * (1 - t.discount_percentage) AS nett_sales,
+    FROM avid-streamer-454913-s1.kimia_farma.kf_final_transaction t
+    LEFT JOIN
+    avid-streamer-454913-s1.kimia_farma.kf_kantor_cabang c
+    ON
+    t.branch_id = c.branch_id
+    LEFT JOIN
+    avid-streamer-454913-s1.kimia_farma.kf_product p
+    ON
+    t.product_id = p.product_id )
     -- Menghitung Nett Profit
-    ROUND(
-        (t.price * (1 - t.discount_percentage / 100)) * 
-        CASE 
-            WHEN t.price <= 50000 THEN 0.10
-            WHEN t.price > 50000 AND t.price <= 100000 THEN 0.15
-            WHEN t.price > 100000 AND t.price <= 300000 THEN 0.20
-            WHEN t.price > 300000 AND t.price <= 500000 THEN 0.25
-            ELSE 0.30
-        END, 2
-    ) AS nett_profit,
-
+    SELECT
+    DISTINCT main.*,
+        (actual_price*persentase_gross_laba)-(actual_price-nett_sales) nett_profit,
     -- Menggunakan rating dari tabel transaksi
     t.rating AS rating_transaksi
 
-FROM `avid-streamer-454913-s1.kimia_farma.kf_final_transaction` AS t
-LEFT JOIN `avid-streamer-454913-s1.kimia_farma.kf_kantor_cabang` AS c
-    ON t.branch_id = c.branch_id
-LEFT JOIN `avid-streamer-454913-s1.kimia_farma.kf_product` AS p
-    ON t.product_id = p.product_id;
+    FROM
+    main,
+    `avid-streamer-454913-s1.kimia_farma.kf_final_transaction` AS t 
+    WHERE 
+    main.transaction_id = t.transaction_id
+    -- Mengurutkan data dari transaksi terbaru
+    ORDER BY
+     date DESC;
