@@ -10,7 +10,7 @@ Proyek ini bertujuan untuk menganalisis transaksi Kimia Farma menggunakan Google
 - `Rakamin_KF_Analysis` berisi query utama untuk membuat tabel analisis berisikan data-data yang dibutuhkan untuk analisis dan pembuatan visualisasi
 ## 🚀 Cara Menggunakan  
 1. Buka Google BigQuery  
-2. Jalankan query dari `Rakamin_KF_Analysis`
+2. Jalankan query dari `Rakamin KF Analysis`
 3. Analisis hasilnya!  
 
 ---
